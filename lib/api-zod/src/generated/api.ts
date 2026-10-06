@@ -24,19 +24,32 @@ export const HealthCheckResponse = zod.object({
 
 
 
-
 export const CreateActivityLogBody = zod.object({
   "agent_id": zod.string().min(1),
-  "task_description": zod.string().min(1),
-  "target_files": zod.array(zod.string()),
+  "agent_name": zod.string().optional().describe('Human-readable worker name; defaults to agent_id for older clients.'),
+  "title": zod.string().optional().describe('Short title describing the task or completed work.'),
+  "task_description": zod.string().optional().describe('Legacy summary accepted for compatibility with older clients.'),
+  "short_description": zod.string().nullish(),
+  "detailed_description": zod.string().optional().describe('Research plan while working; a detailed change report when completed.'),
+  "target_files": zod.array(zod.string()).describe('Intended paths before work; may also be used by older clients.'),
+  "planned_scope": zod.string().nullish().describe('Functions, symbols, and/or expected line ranges to inspect or change.'),
+  "files_touched": zod.array(zod.string()).optional().describe('Actual paths changed in the completion report.'),
+  "change_notes": zod.string().nullish().describe('Per-file change notes, symbols/line hints, and information useful to other agents.'),
   "status": zod.string().min(1)
-})
+}).describe('The server assigns created_at. task_description remains supported for older workers.')
 
 export const CreateActivityLogResponse = zod.object({
   "id": zod.number().int(),
   "agent_id": zod.string(),
+  "agent_name": zod.string(),
+  "title": zod.string(),
   "task_description": zod.string(),
+  "short_description": zod.string().nullish(),
+  "detailed_description": zod.string(),
   "target_files": zod.array(zod.string()),
+  "planned_scope": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()),
+  "change_notes": zod.string().nullish(),
   "status": zod.string(),
   "created_at": zod.coerce.date()
 })
@@ -48,8 +61,15 @@ export const CreateActivityLogResponse = zod.object({
 export const GetTodayActivityResponseItem = zod.object({
   "id": zod.number().int(),
   "agent_id": zod.string(),
+  "agent_name": zod.string(),
+  "title": zod.string(),
   "task_description": zod.string(),
+  "short_description": zod.string().nullish(),
+  "detailed_description": zod.string(),
   "target_files": zod.array(zod.string()),
+  "planned_scope": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()),
+  "change_notes": zod.string().nullish(),
   "status": zod.string(),
   "created_at": zod.coerce.date()
 })

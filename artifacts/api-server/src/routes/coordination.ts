@@ -68,12 +68,40 @@ router.post("/v1/log", async (req, res): Promise<void> => {
     return;
   }
 
+  const title = parsed.data.title?.trim() || parsed.data.task_description?.trim();
+  if (!title) {
+    res.status(400).json({ error: "Provide title or the legacy task_description field." });
+    return;
+  }
+  const detailedDescription =
+    parsed.data.detailed_description?.trim() ||
+    parsed.data.task_description?.trim() ||
+    parsed.data.short_description?.trim() ||
+    title;
+  const terminalStatuses = new Set(["completed", "complete", "success", "done"]);
+  if (
+    terminalStatuses.has(parsed.data.status.toLowerCase()) &&
+    (!parsed.data.detailed_description?.trim() || parsed.data.files_touched === undefined)
+  ) {
+    res.status(400).json({
+      error: "Completion logs require detailed_description and files_touched, even when no files changed.",
+    });
+    return;
+  }
+
   const [entry] = await db
     .insert(activityLogsTable)
     .values({
       agentId: parsed.data.agent_id,
-      taskDescription: parsed.data.task_description,
+      agentName: parsed.data.agent_name?.trim() || parsed.data.agent_id,
+      title,
+      taskDescription: parsed.data.task_description?.trim() || title,
+      shortDescription: parsed.data.short_description?.trim() || null,
+      detailedDescription,
       targetFiles: parsed.data.target_files,
+      plannedScope: parsed.data.planned_scope?.trim() || null,
+      filesTouched: parsed.data.files_touched ?? [],
+      changeNotes: parsed.data.change_notes?.trim() || null,
       status: parsed.data.status,
     })
     .returning();
@@ -82,8 +110,15 @@ router.post("/v1/log", async (req, res): Promise<void> => {
     CreateActivityLogResponse.parse({
       id: entry.id,
       agent_id: entry.agentId,
+      agent_name: entry.agentName,
+      title: entry.title,
       task_description: entry.taskDescription,
+      short_description: entry.shortDescription,
+      detailed_description: entry.detailedDescription,
       target_files: entry.targetFiles,
+      planned_scope: entry.plannedScope,
+      files_touched: entry.filesTouched,
+      change_notes: entry.changeNotes,
       status: entry.status,
       created_at: entry.createdAt,
     }),
@@ -103,8 +138,15 @@ router.get("/v1/log/today", async (_req, res): Promise<void> => {
       entries.map((entry) => ({
         id: entry.id,
         agent_id: entry.agentId,
-        task_description: entry.taskDescription,
+        agent_name: entry.agentName || entry.agentId,
+        title: entry.title || entry.taskDescription,
+        task_description: entry.taskDescription || entry.title,
+        short_description: entry.shortDescription,
+        detailed_description: entry.detailedDescription || entry.taskDescription || entry.title,
         target_files: entry.targetFiles,
+        planned_scope: entry.plannedScope,
+        files_touched: entry.filesTouched,
+        change_notes: entry.changeNotes,
         status: entry.status,
         created_at: entry.createdAt,
       })),

@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import { index, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const activityLogsTable = pgTable(
@@ -6,8 +7,15 @@ export const activityLogsTable = pgTable(
   {
     id: serial("id").primaryKey(),
     agentId: text("agent_id").notNull(),
+    agentName: text("agent_name").notNull().default(""),
+    title: text("title").notNull().default(""),
     taskDescription: text("task_description").notNull(),
+    shortDescription: text("short_description"),
+    detailedDescription: text("detailed_description").notNull().default(""),
     targetFiles: jsonb("target_files").$type<string[]>().notNull(),
+    plannedScope: text("planned_scope"),
+    filesTouched: jsonb("files_touched").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    changeNotes: text("change_notes"),
     status: text("status").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

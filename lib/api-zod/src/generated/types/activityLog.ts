@@ -9,8 +9,18 @@
 export interface ActivityLog {
   id: number;
   agent_id: string;
+  agent_name: string;
+  title: string;
   task_description: string;
+  /** @nullable */
+  short_description?: string | null;
+  detailed_description: string;
   target_files: string[];
+  /** @nullable */
+  planned_scope?: string | null;
+  files_touched: string[];
+  /** @nullable */
+  change_notes?: string | null;
   status: string;
   created_at: Date;
 }

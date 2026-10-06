@@ -6,12 +6,36 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * The server assigns created_at. task_description remains supported for older workers.
+ */
 export interface ActivityLogInput {
   /** @minLength 1 */
   agent_id: string;
-  /** @minLength 1 */
-  task_description: string;
+  /** Human-readable worker name; defaults to agent_id for older clients. */
+  agent_name?: string;
+  /** Short title describing the task or completed work. */
+  title?: string;
+  /** Legacy summary accepted for compatibility with older clients. */
+  task_description?: string;
+  /** @nullable */
+  short_description?: string | null;
+  /** Research plan while working; a detailed change report when completed. */
+  detailed_description?: string;
+  /** Intended paths before work; may also be used by older clients. */
   target_files: string[];
+  /**
+     * Functions, symbols, and/or expected line ranges to inspect or change.
+     * @nullable
+     */
+  planned_scope?: string | null;
+  /** Actual paths changed in the completion report. */
+  files_touched?: string[];
+  /**
+     * Per-file change notes, symbols/line hints, and information useful to other agents.
+     * @nullable
+     */
+  change_notes?: string | null;
   /** @minLength 1 */
   status: string;
 }

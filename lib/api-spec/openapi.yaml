@@ -162,35 +162,75 @@ components:
           type: string
     ActivityLogInput:
       type: object
-      required: [agent_id, task_description, target_files, status]
+      description: The server assigns created_at. task_description remains supported for older workers.
+      required: [agent_id, target_files, status]
       properties:
         agent_id:
           type: string
           minLength: 1
+        agent_name:
+          type: string
+          description: Human-readable worker name; defaults to agent_id for older clients.
+        title:
+          type: string
+          description: Short title describing the task or completed work.
         task_description:
           type: string
-          minLength: 1
+          description: Legacy summary accepted for compatibility with older clients.
+        short_description:
+          type: ["string", "null"]
+        detailed_description:
+          type: string
+          description: Research plan while working; a detailed change report when completed.
         target_files:
           type: array
           items:
             type: string
+          description: Intended paths before work; may also be used by older clients.
+        planned_scope:
+          type: ["string", "null"]
+          description: Functions, symbols, and/or expected line ranges to inspect or change.
+        files_touched:
+          type: array
+          items:
+            type: string
+          description: Actual paths changed in the completion report.
+        change_notes:
+          type: ["string", "null"]
+          description: Per-file change notes, symbols/line hints, and information useful to other agents.
         status:
           type: string
           minLength: 1
     ActivityLog:
       type: object
-      required: [id, agent_id, task_description, target_files, status, created_at]
+      required: [id, agent_id, agent_name, title, task_description, detailed_description, target_files, files_touched, status, created_at]
       properties:
         id:
           type: integer
         agent_id:
           type: string
+        agent_name:
+          type: string
+        title:
+          type: string
         task_description:
+          type: string
+        short_description:
+          type: ["string", "null"]
+        detailed_description:
           type: string
         target_files:
           type: array
           items:
             type: string
+        planned_scope:
+          type: ["string", "null"]
+        files_touched:
+          type: array
+          items:
+            type: string
+        change_notes:
+          type: ["string", "null"]
         status:
           type: string
         created_at:
