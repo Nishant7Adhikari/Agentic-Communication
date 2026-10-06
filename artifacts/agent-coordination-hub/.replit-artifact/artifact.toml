@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Agent Coordination Hub"
+description = "A lightweight coordination console for autonomous agents, with shared activity logs, expiring file-path locks, conflict tracking, and practical API documentation."
+version = "1.0.0"
+id = "artifacts/agent-coordination-hub"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24752
+
+[services.development]
+run = "pnpm --filter @workspace/agent-coordination-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agent-coordination-hub", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/agent-coordination-hub/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24752"
+BASE_PATH = "/"

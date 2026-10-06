@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Agent Coordination Hub API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: activity
+    description: Shared agent activity
+  - name: locks
+    description: Path-level file locks
+  - name: dashboard
+    description: Live coordination metrics
 paths:
   /healthz:
     get:
@@ -24,7 +30,122 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /v1/log:
+    post:
+      operationId: createActivityLog
+      tags: [activity]
+      summary: Record an agent activity event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityLogInput"
+      responses:
+        "201":
+          description: Activity recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityLog"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/log/today:
+    get:
+      operationId: getTodayActivity
+      tags: [activity]
+      summary: Get today's activity timeline
+      responses:
+        "200":
+          description: Today's activity events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLog"
+  /v1/locks:
+    get:
+      operationId: getActiveLocks
+      tags: [locks]
+      summary: List active path locks
+      responses:
+        "200":
+          description: Active, unexpired path locks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PathLock"
+  /v1/locks/acquire:
+    post:
+      operationId: acquireLocks
+      tags: [locks]
+      summary: Atomically acquire locks for target paths
+      description: Locks expire automatically after two hours. Parent and child paths overlap.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockAcquireInput"
+      responses:
+        "200":
+          description: All requested path locks were granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockAcquireResult"
+        "409":
+          description: One or more paths overlap locks held by another agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockConflictResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/locks/release:
+    post:
+      operationId: releaseLocks
+      tags: [locks]
+      summary: Release an agent's locks
+      description: Omit target_files to release all locks held by the agent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LockReleaseInput"
+      responses:
+        "200":
+          description: Matching locks released
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockReleaseResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/dashboard:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get live coordination metrics
+      responses:
+        "200":
+          description: Current dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
 components:
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +154,140 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ActivityLogInput:
+      type: object
+      required: [agent_id, task_description, target_files, status]
+      properties:
+        agent_id:
+          type: string
+          minLength: 1
+        task_description:
+          type: string
+          minLength: 1
+        target_files:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          minLength: 1
+    ActivityLog:
+      type: object
+      required: [id, agent_id, task_description, target_files, status, created_at]
+      properties:
+        id:
+          type: integer
+        agent_id:
+          type: string
+        task_description:
+          type: string
+        target_files:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    PathLock:
+      type: object
+      required: [id, path, agent_id, acquired_at, expires_at]
+      properties:
+        id:
+          type: integer
+        path:
+          type: string
+        agent_id:
+          type: string
+        acquired_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+    LockAcquireInput:
+      type: object
+      required: [agent_id, target_files]
+      properties:
+        agent_id:
+          type: string
+          minLength: 1
+        target_files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    LockAcquireResult:
+      type: object
+      required: [granted, locks]
+      properties:
+        granted:
+          type: boolean
+        locks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PathLock"
+    LockConflict:
+      type: object
+      required: [requested_path, locked_path, agent_id, expires_at]
+      properties:
+        requested_path:
+          type: string
+        locked_path:
+          type: string
+        agent_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    LockConflictResult:
+      type: object
+      required: [granted, conflicts]
+      properties:
+        granted:
+          type: boolean
+        conflicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/LockConflict"
+    LockReleaseInput:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id:
+          type: string
+          minLength: 1
+        target_files:
+          type: array
+          items:
+            type: string
+    LockReleaseResult:
+      type: object
+      required: [released_count]
+      properties:
+        released_count:
+          type: integer
+        released_paths:
+          type: array
+          items:
+            type: string
+    DashboardSummary:
+      type: object
+      required: [active_agents, active_locks, conflicts_today, activity_today]
+      properties:
+        active_agents:
+          type: integer
+        active_locks:
+          type: integer
+        conflicts_today:
+          type: integer
+        activity_today:
+          type: integer
 
