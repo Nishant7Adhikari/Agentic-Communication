@@ -19,6 +19,7 @@
     "tunnel": "npx localtunnel --port 5000"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@replit/connectors-sdk": "^0.4.3"
   },
   "devDependencies": {
