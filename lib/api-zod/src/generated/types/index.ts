@@ -9,6 +9,7 @@
 export * from './activityLog';
 export * from './activityLogInput';
 export * from './badRequestResponse';
+export * from './closeInput';
 export * from './dashboardSummary';
 export * from './errorResponse';
 export * from './healthStatus';
@@ -19,3 +20,4 @@ export * from './lockConflictResult';
 export * from './lockReleaseInput';
 export * from './lockReleaseResult';
 export * from './pathLock';
+export * from './planInput';

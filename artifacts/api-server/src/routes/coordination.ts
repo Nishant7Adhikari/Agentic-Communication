@@ -11,6 +11,10 @@ import {
   GetTodayActivityResponse,
   ReleaseLocksBody,
   ReleaseLocksResponse,
+  SubmitInitialPlanBody,
+  SubmitInitialPlanResponse,
+  SubmitClosingStatementBody,
+  SubmitClosingStatementResponse,
 } from "@workspace/api-zod";
 import type { LockConflictResult } from "@workspace/api-zod";
 import {
@@ -61,6 +65,126 @@ function apiLock(lock: typeof pathLocksTable.$inferSelect) {
   };
 }
 
+function formatActivityLog(entry: typeof activityLogsTable.$inferSelect) {
+  return {
+    id: entry.id,
+    agent_id: entry.agentId,
+    agent_name: entry.agentName || entry.agentId,
+    title: entry.title || entry.taskDescription || "Untitled task",
+    task_description: entry.taskDescription || entry.title || "",
+    short_description: entry.shortDescription,
+    detailed_description: entry.detailedDescription || entry.initialPlanning || "",
+    initial_planning: entry.initialPlanning,
+    planned_scope: entry.plannedScope,
+    target_files: entry.targetFiles ?? [],
+    closing_statement: entry.closingStatement,
+    unexpected_changes: entry.unexpectedChanges,
+    files_touched: entry.filesTouched ?? [],
+    change_notes: entry.changeNotes,
+    status: entry.status,
+    created_at: entry.createdAt,
+    closed_at: entry.closedAt,
+  };
+}
+
+// Step 1: Submit Initial Plan
+router.post("/v1/plan", async (req, res): Promise<void> => {
+  const parsed = SubmitInitialPlanBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { agent_id, agent_name, title, initial_planning, planned_scope, target_files } = parsed.data;
+
+  const [entry] = await db
+    .insert(activityLogsTable)
+    .values({
+      agentId: agent_id,
+      agentName: agent_name?.trim() || agent_id,
+      title: title.trim(),
+      taskDescription: initial_planning.trim(),
+      detailedDescription: initial_planning.trim(),
+      initialPlanning: initial_planning.trim(),
+      plannedScope: planned_scope.trim(),
+      targetFiles: target_files ?? [],
+      status: "in_progress",
+    })
+    .returning();
+
+  res.status(201).json(SubmitInitialPlanResponse.parse(formatActivityLog(entry)));
+});
+
+// Step 3: Submit Closing Statement
+router.post("/v1/close", async (req, res): Promise<void> => {
+  const parsed = SubmitClosingStatementBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { agent_id, log_id, closing_statement, unexpected_changes, files_touched, change_notes } = parsed.data;
+  const now = new Date();
+
+  // Find target log entry
+  let existingEntry: typeof activityLogsTable.$inferSelect | undefined;
+  if (log_id) {
+    const found = await db
+      .select()
+      .from(activityLogsTable)
+      .where(and(eq(activityLogsTable.id, log_id), eq(activityLogsTable.agentId, agent_id)))
+      .limit(1);
+    existingEntry = found[0];
+  } else {
+    // Find latest in-progress entry for this agent
+    const found = await db
+      .select()
+      .from(activityLogsTable)
+      .where(and(eq(activityLogsTable.agentId, agent_id), eq(activityLogsTable.status, "in_progress")))
+      .orderBy(desc(activityLogsTable.createdAt))
+      .limit(1);
+    existingEntry = found[0];
+  }
+
+  if (existingEntry) {
+    const [updated] = await db
+      .update(activityLogsTable)
+      .set({
+        closingStatement: closing_statement.trim(),
+        unexpectedChanges: unexpected_changes?.trim() || existingEntry.unexpectedChanges,
+        filesTouched: files_touched ?? existingEntry.filesTouched,
+        changeNotes: change_notes?.trim() || existingEntry.changeNotes,
+        status: "completed",
+        closedAt: now,
+      })
+      .where(eq(activityLogsTable.id, existingEntry.id))
+      .returning();
+
+    res.status(200).json(SubmitClosingStatementResponse.parse(formatActivityLog(updated)));
+    return;
+  }
+
+  // Fallback: create completed log entry if no prior plan record found
+  const [newEntry] = await db
+    .insert(activityLogsTable)
+    .values({
+      agentId: agent_id,
+      agentName: agent_id,
+      title: "Completed work",
+      taskDescription: closing_statement.trim(),
+      detailedDescription: closing_statement.trim(),
+      closingStatement: closing_statement.trim(),
+      unexpectedChanges: unexpected_changes?.trim() || null,
+      filesTouched: files_touched ?? [],
+      changeNotes: change_notes?.trim() || null,
+      status: "completed",
+      closedAt: now,
+    })
+    .returning();
+
+  res.status(200).json(SubmitClosingStatementResponse.parse(formatActivityLog(newEntry)));
+});
+
 router.post("/v1/log", async (req, res): Promise<void> => {
   const parsed = CreateActivityLogBody.safeParse(req.body);
   if (!parsed.success) {
@@ -68,26 +192,14 @@ router.post("/v1/log", async (req, res): Promise<void> => {
     return;
   }
 
-  const title = parsed.data.title?.trim() || parsed.data.task_description?.trim();
-  if (!title) {
-    res.status(400).json({ error: "Provide title or the legacy task_description field." });
-    return;
-  }
+  const title = parsed.data.title?.trim() || parsed.data.task_description?.trim() || "Untitled activity";
   const detailedDescription =
     parsed.data.detailed_description?.trim() ||
+    parsed.data.initial_planning?.trim() ||
+    parsed.data.closing_statement?.trim() ||
     parsed.data.task_description?.trim() ||
     parsed.data.short_description?.trim() ||
     title;
-  const terminalStatuses = new Set(["completed", "complete", "success", "done"]);
-  if (
-    terminalStatuses.has(parsed.data.status.toLowerCase()) &&
-    (!parsed.data.detailed_description?.trim() || parsed.data.files_touched === undefined)
-  ) {
-    res.status(400).json({
-      error: "Completion logs require detailed_description and files_touched, even when no files changed.",
-    });
-    return;
-  }
 
   const [entry] = await db
     .insert(activityLogsTable)
@@ -98,31 +210,19 @@ router.post("/v1/log", async (req, res): Promise<void> => {
       taskDescription: parsed.data.task_description?.trim() || title,
       shortDescription: parsed.data.short_description?.trim() || null,
       detailedDescription,
-      targetFiles: parsed.data.target_files,
+      initialPlanning: parsed.data.initial_planning?.trim() || null,
       plannedScope: parsed.data.planned_scope?.trim() || null,
+      targetFiles: parsed.data.target_files ?? [],
+      closingStatement: parsed.data.closing_statement?.trim() || null,
+      unexpectedChanges: parsed.data.unexpected_changes?.trim() || null,
       filesTouched: parsed.data.files_touched ?? [],
       changeNotes: parsed.data.change_notes?.trim() || null,
       status: parsed.data.status,
+      closedAt: TERMINAL_STATUSES.has(parsed.data.status.toLowerCase()) ? new Date() : null,
     })
     .returning();
 
-  res.status(201).json(
-    CreateActivityLogResponse.parse({
-      id: entry.id,
-      agent_id: entry.agentId,
-      agent_name: entry.agentName,
-      title: entry.title,
-      task_description: entry.taskDescription,
-      short_description: entry.shortDescription,
-      detailed_description: entry.detailedDescription,
-      target_files: entry.targetFiles,
-      planned_scope: entry.plannedScope,
-      files_touched: entry.filesTouched,
-      change_notes: entry.changeNotes,
-      status: entry.status,
-      created_at: entry.createdAt,
-    }),
-  );
+  res.status(201).json(CreateActivityLogResponse.parse(formatActivityLog(entry)));
 });
 
 router.get("/v1/log/today", async (_req, res): Promise<void> => {
@@ -133,25 +233,7 @@ router.get("/v1/log/today", async (_req, res): Promise<void> => {
     .where(and(gte(activityLogsTable.createdAt, start), lt(activityLogsTable.createdAt, end)))
     .orderBy(desc(activityLogsTable.createdAt));
 
-  res.json(
-    GetTodayActivityResponse.parse(
-      entries.map((entry) => ({
-        id: entry.id,
-        agent_id: entry.agentId,
-        agent_name: entry.agentName || entry.agentId,
-        title: entry.title || entry.taskDescription,
-        task_description: entry.taskDescription || entry.title,
-        short_description: entry.shortDescription,
-        detailed_description: entry.detailedDescription || entry.taskDescription || entry.title,
-        target_files: entry.targetFiles,
-        planned_scope: entry.plannedScope,
-        files_touched: entry.filesTouched,
-        change_notes: entry.changeNotes,
-        status: entry.status,
-        created_at: entry.createdAt,
-      })),
-    ),
-  );
+  res.json(GetTodayActivityResponse.parse(entries.map(formatActivityLog)));
 });
 
 router.get("/v1/locks", async (_req, res): Promise<void> => {

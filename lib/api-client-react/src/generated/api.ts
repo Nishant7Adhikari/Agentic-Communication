@@ -23,6 +23,7 @@ import type {
   ActivityLog,
   ActivityLogInput,
   BadRequestResponse,
+  CloseInput,
   DashboardSummary,
   HealthStatus,
   LockAcquireInput,
@@ -30,7 +31,8 @@ import type {
   LockConflictResult,
   LockReleaseInput,
   LockReleaseResult,
-  PathLock
+  PathLock,
+  PlanInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -224,6 +226,182 @@ export const useCreateActivityLog = <TError = ErrorType<BadRequestResponse>,
         TContext
       > => {
       return useMutation(getCreateActivityLogMutationOptions(options));
+    }
+
+export const getSubmitInitialPlanUrl = () => {
+
+
+
+
+  return `/api/v1/plan`
+}
+
+/**
+ * @summary Submit agent initial planning (Step 1)
+ */
+export const submitInitialPlan = async (planInput: PlanInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivityLog> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActivityLog>(getSubmitInitialPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(planInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitInitialPlanMutationKey = () => ['submitInitialPlan'] as const;
+
+export const getSubmitInitialPlanMutationOptions = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitInitialPlan>>, TError,SubmitInitialPlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitInitialPlan>>, TError,SubmitInitialPlanMutationVariables, TContext> => {
+
+const mutationKey = getSubmitInitialPlanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitInitialPlan>>, SubmitInitialPlanMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitInitialPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitInitialPlanMutationResult = NonNullable<Awaited<ReturnType<typeof submitInitialPlan>>>
+    export type SubmitInitialPlanMutationBody = BodyType<PlanInput>
+    export type SubmitInitialPlanMutationError = ErrorType<BadRequestResponse>
+    export type SubmitInitialPlanMutationVariables = {data: BodyType<PlanInput>}
+
+    /**
+ * @summary Submit agent initial planning (Step 1)
+ */
+export const useSubmitInitialPlan = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitInitialPlan>>, TError,SubmitInitialPlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitInitialPlan>>,
+        TError,
+        SubmitInitialPlanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitInitialPlanMutationOptions(options));
+    }
+
+export const getSubmitClosingStatementUrl = () => {
+
+
+
+
+  return `/api/v1/close`
+}
+
+/**
+ * @summary Submit agent closing statement (Step 3)
+ */
+export const submitClosingStatement = async (closeInput: CloseInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivityLog> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActivityLog>(getSubmitClosingStatementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(closeInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitClosingStatementMutationKey = () => ['submitClosingStatement'] as const;
+
+export const getSubmitClosingStatementMutationOptions = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitClosingStatement>>, TError,SubmitClosingStatementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitClosingStatement>>, TError,SubmitClosingStatementMutationVariables, TContext> => {
+
+const mutationKey = getSubmitClosingStatementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitClosingStatement>>, SubmitClosingStatementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitClosingStatement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitClosingStatementMutationResult = NonNullable<Awaited<ReturnType<typeof submitClosingStatement>>>
+    export type SubmitClosingStatementMutationBody = BodyType<CloseInput>
+    export type SubmitClosingStatementMutationError = ErrorType<BadRequestResponse>
+    export type SubmitClosingStatementMutationVariables = {data: BodyType<CloseInput>}
+
+    /**
+ * @summary Submit agent closing statement (Step 3)
+ */
+export const useSubmitClosingStatement = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitClosingStatement>>, TError,SubmitClosingStatementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitClosingStatement>>,
+        TError,
+        SubmitClosingStatementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitClosingStatementMutationOptions(options));
     }
 
 export const getGetTodayActivityUrl = () => {

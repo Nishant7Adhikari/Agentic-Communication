@@ -50,6 +50,46 @@ paths:
                 $ref: "#/components/schemas/ActivityLog"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /v1/plan:
+    post:
+      operationId: submitInitialPlan
+      tags: [activity]
+      summary: Submit agent initial planning (Step 1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanInput"
+      responses:
+        "201":
+          description: Initial planning recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityLog"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v1/close:
+    post:
+      operationId: submitClosingStatement
+      tags: [activity]
+      summary: Submit agent closing statement (Step 3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseInput"
+      responses:
+        "200":
+          description: Closing statement recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityLog"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /v1/log/today:
     get:
       operationId: getTodayActivity
@@ -160,17 +200,69 @@ components:
       properties:
         error:
           type: string
-    ActivityLogInput:
+    PlanInput:
       type: object
-      description: The server assigns created_at. task_description remains supported for older workers.
-      required: [agent_id, target_files, status]
+      required: [agent_id, title, initial_planning, planned_scope]
       properties:
         agent_id:
           type: string
           minLength: 1
         agent_name:
           type: string
-          description: Human-readable worker name; defaults to agent_id for older clients.
+          description: Human-readable agent name
+        title:
+          type: string
+          minLength: 1
+          description: Task or feature title
+        initial_planning:
+          type: string
+          minLength: 1
+          description: Brief description about 50-100 words of the task/feature/bug
+        planned_scope:
+          type: string
+          minLength: 1
+          description: 50-100 words describing affected files, functions, classes, and expected line ranges
+        target_files:
+          type: array
+          items:
+            type: string
+          description: Files expected to be touched
+    CloseInput:
+      type: object
+      required: [agent_id, closing_statement]
+      properties:
+        agent_id:
+          type: string
+          minLength: 1
+        log_id:
+          type: integer
+          description: Optional ID of the specific plan to close. If omitted, closes the latest in-progress plan for this agent.
+        closing_statement:
+          type: string
+          minLength: 1
+          description: Closing statement explaining what was completed
+        unexpected_changes:
+          type: ["string", "null"]
+          description: Explanation of any new, unexpected files or functions touched that were not originally mentioned in the initial planning.
+        files_touched:
+          type: array
+          items:
+            type: string
+          description: Actual files touched during implementation
+        change_notes:
+          type: ["string", "null"]
+          description: Additional notes or reflections
+    ActivityLogInput:
+      type: object
+      description: The server assigns created_at.
+      required: [agent_id, status]
+      properties:
+        agent_id:
+          type: string
+          minLength: 1
+        agent_name:
+          type: string
+          description: Human-readable worker name.
         title:
           type: string
           description: Short title describing the task or completed work.
@@ -181,29 +273,38 @@ components:
           type: ["string", "null"]
         detailed_description:
           type: string
-          description: Research plan while working; a detailed change report when completed.
+          description: Detailed description or notes.
+        initial_planning:
+          type: ["string", "null"]
+          description: 50-100 words task description.
+        planned_scope:
+          type: ["string", "null"]
+          description: 50-100 words describing functions, symbols, and/or expected line ranges.
         target_files:
           type: array
           items:
             type: string
-          description: Intended paths before work; may also be used by older clients.
-        planned_scope:
+          description: Intended paths before work.
+        closing_statement:
           type: ["string", "null"]
-          description: Functions, symbols, and/or expected line ranges to inspect or change.
+          description: Closing statement prior to PR.
+        unexpected_changes:
+          type: ["string", "null"]
+          description: Any unexpected or unplanned changes made beyond initial planning.
         files_touched:
           type: array
           items:
             type: string
-          description: Actual paths changed in the completion report.
+          description: Actual paths changed.
         change_notes:
           type: ["string", "null"]
-          description: Per-file change notes, symbols/line hints, and information useful to other agents.
+          description: Per-file change notes.
         status:
           type: string
           minLength: 1
     ActivityLog:
       type: object
-      required: [id, agent_id, agent_name, title, task_description, detailed_description, target_files, files_touched, status, created_at]
+      required: [id, agent_id, agent_name, title, status, created_at]
       properties:
         id:
           type: integer
@@ -219,11 +320,17 @@ components:
           type: ["string", "null"]
         detailed_description:
           type: string
+        initial_planning:
+          type: ["string", "null"]
+        planned_scope:
+          type: ["string", "null"]
         target_files:
           type: array
           items:
             type: string
-        planned_scope:
+        closing_statement:
+          type: ["string", "null"]
+        unexpected_changes:
           type: ["string", "null"]
         files_touched:
           type: array
@@ -235,6 +342,9 @@ components:
           type: string
         created_at:
           type: string
+          format: date-time
+        closed_at:
+          type: ["string", "null"]
           format: date-time
     PathLock:
       type: object

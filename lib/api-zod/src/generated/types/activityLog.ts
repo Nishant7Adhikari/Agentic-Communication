@@ -11,16 +11,24 @@ export interface ActivityLog {
   agent_id: string;
   agent_name: string;
   title: string;
-  task_description: string;
+  task_description?: string;
   /** @nullable */
   short_description?: string | null;
-  detailed_description: string;
-  target_files: string[];
+  detailed_description?: string;
+  /** @nullable */
+  initial_planning?: string | null;
   /** @nullable */
   planned_scope?: string | null;
-  files_touched: string[];
+  target_files?: string[];
+  /** @nullable */
+  closing_statement?: string | null;
+  /** @nullable */
+  unexpected_changes?: string | null;
+  files_touched?: string[];
   /** @nullable */
   change_notes?: string | null;
   status: string;
   created_at: Date;
+  /** @nullable */
+  closed_at?: Date | null;
 }

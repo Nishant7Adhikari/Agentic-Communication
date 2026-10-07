@@ -7,12 +7,12 @@
  */
 
 /**
- * The server assigns created_at. task_description remains supported for older workers.
+ * The server assigns created_at.
  */
 export interface ActivityLogInput {
   /** @minLength 1 */
   agent_id: string;
-  /** Human-readable worker name; defaults to agent_id for older clients. */
+  /** Human-readable worker name. */
   agent_name?: string;
   /** Short title describing the task or completed work. */
   title?: string;
@@ -20,19 +20,34 @@ export interface ActivityLogInput {
   task_description?: string;
   /** @nullable */
   short_description?: string | null;
-  /** Research plan while working; a detailed change report when completed. */
+  /** Detailed description or notes. */
   detailed_description?: string;
-  /** Intended paths before work; may also be used by older clients. */
-  target_files: string[];
   /**
-     * Functions, symbols, and/or expected line ranges to inspect or change.
+     * 50-100 words task description.
+     * @nullable
+     */
+  initial_planning?: string | null;
+  /**
+     * 50-100 words describing functions, symbols, and/or expected line ranges.
      * @nullable
      */
   planned_scope?: string | null;
-  /** Actual paths changed in the completion report. */
+  /** Intended paths before work. */
+  target_files?: string[];
+  /**
+     * Closing statement prior to PR.
+     * @nullable
+     */
+  closing_statement?: string | null;
+  /**
+     * Any unexpected or unplanned changes made beyond initial planning.
+     * @nullable
+     */
+  unexpected_changes?: string | null;
+  /** Actual paths changed. */
   files_touched?: string[];
   /**
-     * Per-file change notes, symbols/line hints, and information useful to other agents.
+     * Per-file change notes.
      * @nullable
      */
   change_notes?: string | null;

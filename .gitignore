@@ -7,7 +7,6 @@ out-tsc
 *.tsbuildinfo
 .expo
 .expo-shared
-
 # dependencies
 node_modules
 
@@ -36,7 +35,7 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
-
+/jules/*
 # System Files
 .DS_Store
 Thumbs.db

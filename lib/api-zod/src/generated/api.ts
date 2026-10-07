@@ -26,32 +26,115 @@ export const HealthCheckResponse = zod.object({
 
 export const CreateActivityLogBody = zod.object({
   "agent_id": zod.string().min(1),
-  "agent_name": zod.string().optional().describe('Human-readable worker name; defaults to agent_id for older clients.'),
+  "agent_name": zod.string().optional().describe('Human-readable worker name.'),
   "title": zod.string().optional().describe('Short title describing the task or completed work.'),
   "task_description": zod.string().optional().describe('Legacy summary accepted for compatibility with older clients.'),
   "short_description": zod.string().nullish(),
-  "detailed_description": zod.string().optional().describe('Research plan while working; a detailed change report when completed.'),
-  "target_files": zod.array(zod.string()).describe('Intended paths before work; may also be used by older clients.'),
-  "planned_scope": zod.string().nullish().describe('Functions, symbols, and/or expected line ranges to inspect or change.'),
-  "files_touched": zod.array(zod.string()).optional().describe('Actual paths changed in the completion report.'),
-  "change_notes": zod.string().nullish().describe('Per-file change notes, symbols/line hints, and information useful to other agents.'),
+  "detailed_description": zod.string().optional().describe('Detailed description or notes.'),
+  "initial_planning": zod.string().nullish().describe('50-100 words task description.'),
+  "planned_scope": zod.string().nullish().describe('50-100 words describing functions, symbols, and/or expected line ranges.'),
+  "target_files": zod.array(zod.string()).optional().describe('Intended paths before work.'),
+  "closing_statement": zod.string().nullish().describe('Closing statement prior to PR.'),
+  "unexpected_changes": zod.string().nullish().describe('Any unexpected or unplanned changes made beyond initial planning.'),
+  "files_touched": zod.array(zod.string()).optional().describe('Actual paths changed.'),
+  "change_notes": zod.string().nullish().describe('Per-file change notes.'),
   "status": zod.string().min(1)
-}).describe('The server assigns created_at. task_description remains supported for older workers.')
+}).describe('The server assigns created_at.')
 
 export const CreateActivityLogResponse = zod.object({
   "id": zod.number().int(),
   "agent_id": zod.string(),
   "agent_name": zod.string(),
   "title": zod.string(),
-  "task_description": zod.string(),
+  "task_description": zod.string().optional(),
   "short_description": zod.string().nullish(),
-  "detailed_description": zod.string(),
-  "target_files": zod.array(zod.string()),
+  "detailed_description": zod.string().optional(),
+  "initial_planning": zod.string().nullish(),
   "planned_scope": zod.string().nullish(),
-  "files_touched": zod.array(zod.string()),
+  "target_files": zod.array(zod.string()).optional(),
+  "closing_statement": zod.string().nullish(),
+  "unexpected_changes": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()).optional(),
   "change_notes": zod.string().nullish(),
   "status": zod.string(),
-  "created_at": zod.coerce.date()
+  "created_at": zod.coerce.date(),
+  "closed_at": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Submit agent initial planning (Step 1)
+ */
+
+
+
+
+
+
+export const SubmitInitialPlanBody = zod.object({
+  "agent_id": zod.string().min(1),
+  "agent_name": zod.string().optional().describe('Human-readable agent name'),
+  "title": zod.string().min(1).describe('Task or feature title'),
+  "initial_planning": zod.string().min(1).describe('Brief description about 50-100 words of the task/feature/bug'),
+  "planned_scope": zod.string().min(1).describe('50-100 words describing affected files, functions, classes, and expected line ranges'),
+  "target_files": zod.array(zod.string()).optional().describe('Files expected to be touched')
+})
+
+export const SubmitInitialPlanResponse = zod.object({
+  "id": zod.number().int(),
+  "agent_id": zod.string(),
+  "agent_name": zod.string(),
+  "title": zod.string(),
+  "task_description": zod.string().optional(),
+  "short_description": zod.string().nullish(),
+  "detailed_description": zod.string().optional(),
+  "initial_planning": zod.string().nullish(),
+  "planned_scope": zod.string().nullish(),
+  "target_files": zod.array(zod.string()).optional(),
+  "closing_statement": zod.string().nullish(),
+  "unexpected_changes": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()).optional(),
+  "change_notes": zod.string().nullish(),
+  "status": zod.string(),
+  "created_at": zod.coerce.date(),
+  "closed_at": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Submit agent closing statement (Step 3)
+ */
+
+
+
+
+export const SubmitClosingStatementBody = zod.object({
+  "agent_id": zod.string().min(1),
+  "log_id": zod.number().int().optional().describe('Optional ID of the specific plan to close. If omitted, closes the latest in-progress plan for this agent.'),
+  "closing_statement": zod.string().min(1).describe('Closing statement explaining what was completed'),
+  "unexpected_changes": zod.string().nullish().describe('Explanation of any new, unexpected files or functions touched that were not originally mentioned in the initial planning.'),
+  "files_touched": zod.array(zod.string()).optional().describe('Actual files touched during implementation'),
+  "change_notes": zod.string().nullish().describe('Additional notes or reflections')
+})
+
+export const SubmitClosingStatementResponse = zod.object({
+  "id": zod.number().int(),
+  "agent_id": zod.string(),
+  "agent_name": zod.string(),
+  "title": zod.string(),
+  "task_description": zod.string().optional(),
+  "short_description": zod.string().nullish(),
+  "detailed_description": zod.string().optional(),
+  "initial_planning": zod.string().nullish(),
+  "planned_scope": zod.string().nullish(),
+  "target_files": zod.array(zod.string()).optional(),
+  "closing_statement": zod.string().nullish(),
+  "unexpected_changes": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()).optional(),
+  "change_notes": zod.string().nullish(),
+  "status": zod.string(),
+  "created_at": zod.coerce.date(),
+  "closed_at": zod.coerce.date().nullish()
 })
 
 
@@ -63,15 +146,19 @@ export const GetTodayActivityResponseItem = zod.object({
   "agent_id": zod.string(),
   "agent_name": zod.string(),
   "title": zod.string(),
-  "task_description": zod.string(),
+  "task_description": zod.string().optional(),
   "short_description": zod.string().nullish(),
-  "detailed_description": zod.string(),
-  "target_files": zod.array(zod.string()),
+  "detailed_description": zod.string().optional(),
+  "initial_planning": zod.string().nullish(),
   "planned_scope": zod.string().nullish(),
-  "files_touched": zod.array(zod.string()),
+  "target_files": zod.array(zod.string()).optional(),
+  "closing_statement": zod.string().nullish(),
+  "unexpected_changes": zod.string().nullish(),
+  "files_touched": zod.array(zod.string()).optional(),
   "change_notes": zod.string().nullish(),
   "status": zod.string(),
-  "created_at": zod.coerce.date()
+  "created_at": zod.coerce.date(),
+  "closed_at": zod.coerce.date().nullish()
 })
 export const GetTodayActivityResponse = zod.array(GetTodayActivityResponseItem)
 
